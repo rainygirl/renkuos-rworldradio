@@ -54,11 +54,21 @@ RSRCS =
 # - "-lsupc++" doesn't exist at all for gcc2: GCC 2.95 predates the
 #   libstdc++/libsupc++ split (that happened around GCC 3.x), so linking it
 #   would itself fail with "cannot find -lsupc++".
+#
+# Built with "setarch x86" on an x86_gcc2 hybrid, the compiler is the modern
+# one, and the x86 secondary architecture's libraries and headers sit in an
+# x86/ subfolder of each directory: ARCH_SUBDIR is "/x86" there and empty
+# everywhere else (x86_gcc2's own lib/x86_gcc2 does not exist).
+ARCH_SUBDIR := $(if $(wildcard /boot/system/develop/lib/$(shell getarch 2>/dev/null)),/$(shell getarch),)
 GCC_VERSION := $(shell g++ -dumpversion)
 ifeq ($(filter 2.%,$(GCC_VERSION)),)
 LIBS = be tracker network bnetapi media stdc++ supc++ $(OPENSSL_LIBS) \
-	/boot/system/develop/lib/libnetservices.a \
-	/boot/system/develop/lib/libshared.a
+	/boot/system/develop/lib$(ARCH_SUBDIR)/libnetservices.a \
+	/boot/system/develop/lib$(ARCH_SUBDIR)/libshared.a
+# The hybrid's secondary build reads the same system headers as its gcc2 one.
+ifneq ($(ARCH_SUBDIR),)
+HAIKU_BURL_CTOR_DEFINE = HAIKU_BURL_HAS_BOOL_CTOR
+endif
 else
 LIBS = be tracker network bnetapi media $(OPENSSL_LIBS) \
 	/boot/system/develop/lib/libstdc++.r4.so \
@@ -81,7 +91,7 @@ endif
 # headers alone would build fine and then fail to *load* for want of
 # libssl.so.3 at runtime. HttpAudioIO.cpp falls back to its (non-working,
 # but always buildable) BUrlRequest path without both.
-ifneq ($(and $(wildcard /boot/system/develop/headers/openssl/ssl.h),$(wildcard /boot/system/lib/libssl.so*)),)
+ifneq ($(and $(wildcard /boot/system/develop/headers$(ARCH_SUBDIR)/openssl/ssl.h),$(wildcard /boot/system/lib$(ARCH_SUBDIR)/libssl.so*)),)
 OPENSSL_DEFINE = HAIKU_HAS_OPENSSL
 OPENSSL_LIBS = ssl crypto
 endif
